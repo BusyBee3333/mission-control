@@ -1,8 +1,12 @@
 /**
- * Mission Control - GHL Sub-Account Management System
+ * Mission Control v2 - GHL Sub-Account Management System
  *
- * 3-Panel interface for managing campaigns, workflows, and SOPs.
- * Built on PatchyHub patterns with S.C.A.L.E. comprehension scoring.
+ * Rebuilt with Linear/Notion-inspired UX:
+ * - Command palette (Cmd+K) for instant navigation
+ * - Keyboard-first design (j/k navigation, shortcuts)
+ * - Visual health indicators (progress bars)
+ * - Inline editing without modals
+ * - Breadcrumb context
  */
 
 const html = `<!DOCTYPE html>
@@ -10,743 +14,1354 @@ const html = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mission Control - GHL Sub-Account Management</title>
+  <title>Mission Control</title>
   <script src="https://d3js.org/d3.v7.min.js"><\/script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #0a0a0c; color: #e4e4e7; overflow: hidden; }
+    :root {
+      --bg-0: #09090b;
+      --bg-1: #0f0f12;
+      --bg-2: #18181b;
+      --bg-3: #1f1f23;
+      --border: #27272a;
+      --border-hover: #3f3f46;
+      --text-0: #fafafa;
+      --text-1: #a1a1aa;
+      --text-2: #71717a;
+      --text-3: #52525b;
+      --accent: #22c55e;
+      --accent-dim: rgba(34, 197, 94, 0.15);
+      --blue: #3b82f6;
+      --purple: #8b5cf6;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --radius: 8px;
+      --radius-sm: 4px;
+    }
 
-    /* Main Layout */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+      background: var(--bg-0);
+      color: var(--text-0);
+      overflow: hidden;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* ============ LAYOUT ============ */
     #app { display: flex; flex-direction: column; height: 100vh; }
-    #header { height: 52px; background: #18181b; border-bottom: 1px solid #27272a; display: flex; align-items: center; padding: 0 20px; gap: 16px; flex-shrink: 0; }
+
+    #topbar {
+      height: 48px;
+      background: var(--bg-1);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
     #main { flex: 1; display: flex; overflow: hidden; }
 
-    /* Header */
-    .logo { font-size: 16px; font-weight: 700; background: linear-gradient(90deg, #22c55e, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .account-select { background: #27272a; border: 1px solid #3f3f46; border-radius: 6px; padding: 6px 12px; color: #fafafa; font-size: 13px; cursor: pointer; }
-    .view-tabs { display: flex; gap: 4px; margin-left: 20px; }
-    .view-tab { padding: 6px 14px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #71717a; font-size: 12px; cursor: pointer; transition: all 0.15s; }
-    .view-tab:hover { color: #a1a1aa; }
-    .view-tab.active { background: #22c55e; color: black; border-color: #22c55e; }
-    .header-search { flex: 1; max-width: 400px; margin: 0 20px; }
-    .header-search input { width: 100%; background: #27272a; border: 1px solid #3f3f46; border-radius: 6px; padding: 8px 12px 8px 36px; color: #fafafa; font-size: 13px; }
-    .header-search input::placeholder { color: #52525b; }
-    .header-actions { display: flex; gap: 8px; margin-left: auto; }
-    .header-btn { padding: 8px 16px; border: 1px solid #3f3f46; border-radius: 6px; background: transparent; color: #a1a1aa; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-    .header-btn:hover { border-color: #22c55e; color: #fafafa; }
-    .header-btn.primary { background: #22c55e; border-color: #22c55e; color: black; }
+    /* ============ TOPBAR ============ */
+    .logo {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo svg { width: 20px; height: 20px; }
 
-    /* Left Panel - Module Navigator */
-    #left-panel { width: 280px; background: #111113; border-right: 1px solid #27272a; display: flex; flex-direction: column; overflow: hidden; }
-    .panel-header { padding: 16px; border-bottom: 1px solid #27272a; display: flex; align-items: center; justify-content: space-between; }
-    .panel-header h3 { font-size: 12px; font-weight: 600; color: #71717a; text-transform: uppercase; letter-spacing: 0.5px; }
-    .panel-header button { width: 24px; height: 24px; border: none; background: #27272a; border-radius: 4px; color: #71717a; cursor: pointer; font-size: 14px; }
-    .panel-header button:hover { background: #3f3f46; color: #fafafa; }
-    #module-tree { flex: 1; overflow-y: auto; padding: 8px; }
+    #breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 20px;
+      font-size: 12px;
+    }
+    .breadcrumb {
+      color: var(--text-2);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      transition: all 0.1s;
+    }
+    .breadcrumb:hover { color: var(--text-1); background: var(--bg-3); }
+    .breadcrumb.current { color: var(--text-0); cursor: default; }
+    .breadcrumb.current:hover { background: transparent; }
+    .breadcrumb-sep { color: var(--text-3); }
 
-    /* Module Tree */
-    .module-item { margin-bottom: 4px; }
-    .module-header { display: flex; align-items: center; padding: 8px 10px; border-radius: 6px; cursor: pointer; transition: background 0.1s; }
-    .module-header:hover { background: #1f1f23; }
-    .module-header.selected { background: #22c55e22; border: 1px solid #22c55e44; }
-    .module-expand { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; color: #52525b; font-size: 10px; margin-right: 6px; }
-    .module-icon { width: 20px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; margin-right: 8px; }
-    .module-name { flex: 1; font-size: 13px; font-weight: 500; color: #fafafa; }
-    .module-health { font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 600; }
-    .module-health.high { background: #22c55e22; color: #4ade80; }
-    .module-health.medium { background: #f59e0b22; color: #fbbf24; }
-    .module-health.low { background: #ef444422; color: #f87171; }
+    #cmd-trigger {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-2);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    #cmd-trigger:hover { border-color: var(--border-hover); color: var(--text-1); }
+    #cmd-trigger kbd {
+      background: var(--bg-3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-family: inherit;
+    }
 
-    .module-children { margin-left: 22px; display: none; }
+    .topbar-actions { display: flex; gap: 8px; }
+    .topbar-btn {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text-1);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .topbar-btn:hover { border-color: var(--accent); color: var(--text-0); }
+    .topbar-btn.primary { background: var(--accent); border-color: var(--accent); color: #000; }
+    .topbar-btn.primary:hover { background: #16a34a; }
+
+    /* ============ SIDEBAR ============ */
+    #sidebar {
+      width: 260px;
+      background: var(--bg-1);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sidebar-header h3 {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .sidebar-header button {
+      width: 22px;
+      height: 22px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-sm);
+      color: var(--text-2);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sidebar-header button:hover { background: var(--bg-3); color: var(--text-0); }
+
+    #module-list { flex: 1; overflow-y: auto; padding: 8px; }
+
+    /* Module Items */
+    .module-item { margin-bottom: 2px; }
+    .module-row {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.1s;
+      position: relative;
+    }
+    .module-row:hover { background: var(--bg-2); }
+    .module-row.selected { background: var(--accent-dim); }
+    .module-row.focused { box-shadow: inset 0 0 0 1px var(--accent); }
+
+    .module-expand {
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-3);
+      font-size: 10px;
+      margin-right: 4px;
+      transition: transform 0.15s;
+    }
+    .module-item.expanded .module-expand { transform: rotate(90deg); }
+
+    .module-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      margin-right: 10px;
+    }
+
+    .module-info { flex: 1; min-width: 0; }
+    .module-name { font-size: 13px; font-weight: 500; color: var(--text-0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .module-meta { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+
+    /* Health Bar */
+    .health-bar {
+      width: 40px;
+      height: 4px;
+      background: var(--bg-3);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-left: 8px;
+    }
+    .health-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.3s;
+    }
+    .health-fill.high { background: var(--accent); }
+    .health-fill.medium { background: var(--amber); }
+    .health-fill.low { background: var(--red); }
+
+    /* Nested Items */
+    .module-children {
+      margin-left: 24px;
+      padding-left: 12px;
+      border-left: 1px solid var(--border);
+      display: none;
+    }
     .module-item.expanded > .module-children { display: block; }
 
-    .asset-group { margin: 4px 0; }
-    .asset-group-header { display: flex; align-items: center; padding: 4px 8px; color: #52525b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; }
-    .asset-group-header:hover { color: #71717a; }
-    .asset-item { display: flex; align-items: center; padding: 6px 8px 6px 20px; border-radius: 4px; cursor: pointer; font-size: 12px; color: #a1a1aa; }
-    .asset-item:hover { background: #1f1f23; color: #fafafa; }
-    .asset-item.selected { background: #22c55e22; color: #22c55e; }
-    .asset-doc-indicator { width: 6px; height: 6px; border-radius: 50%; margin-left: auto; }
-    .asset-doc-indicator.has-doc { background: #22c55e; }
-    .asset-doc-indicator.no-doc { background: #3f3f46; }
+    .child-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text-1);
+      margin: 1px 0;
+      transition: all 0.1s;
+    }
+    .child-item:hover { background: var(--bg-2); color: var(--text-0); }
+    .child-item.selected { background: var(--accent-dim); color: var(--accent); }
+    .child-item.focused { box-shadow: inset 0 0 0 1px var(--accent); }
 
-    /* SOP Section */
-    #sop-section { border-top: 1px solid #27272a; max-height: 200px; overflow-y: auto; }
-    .sop-item { display: flex; align-items: center; padding: 8px 16px; cursor: pointer; font-size: 12px; color: #a1a1aa; border-bottom: 1px solid #1f1f23; }
-    .sop-item:hover { background: #1f1f23; color: #fafafa; }
-    .sop-icon { margin-right: 8px; }
+    .child-type {
+      font-size: 10px;
+      color: var(--text-3);
+      width: 24px;
+      text-align: center;
+      margin-right: 6px;
+    }
+    .child-name { flex: 1; }
+    .child-indicator {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-left: auto;
+    }
+    .child-indicator.doc { background: var(--accent); }
+    .child-indicator.no-doc { background: var(--text-3); opacity: 0.4; }
 
-    /* Center Panel - Canvas */
-    #center-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-    #canvas-toolbar { height: 44px; background: #111113; border-bottom: 1px solid #27272a; display: flex; align-items: center; padding: 0 16px; gap: 12px; }
-    .toolbar-group { display: flex; gap: 4px; }
-    .toolbar-btn { padding: 6px 12px; border: 1px solid #3f3f46; border-radius: 4px; background: transparent; color: #71717a; font-size: 11px; cursor: pointer; }
-    .toolbar-btn:hover { border-color: #52525b; color: #a1a1aa; }
-    .toolbar-btn.active { background: #27272a; border-color: #52525b; color: #fafafa; }
-    .toolbar-separator { width: 1px; height: 20px; background: #27272a; margin: 0 8px; }
-    #canvas-container { flex: 1; position: relative; overflow: hidden; }
+    /* ============ CANVAS AREA ============ */
+    #canvas-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #canvas-toolbar {
+      height: 44px;
+      background: var(--bg-1);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 8px;
+    }
+
+    .view-switcher {
+      display: flex;
+      background: var(--bg-2);
+      border-radius: var(--radius);
+      padding: 2px;
+    }
+    .view-btn {
+      padding: 5px 12px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      color: var(--text-2);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .view-btn:hover { color: var(--text-1); }
+    .view-btn.active { background: var(--bg-3); color: var(--text-0); }
+
+    .toolbar-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      margin: 0 8px;
+    }
+
+    .filter-chips { display: flex; gap: 4px; }
+    .filter-chip {
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text-2);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .filter-chip:hover { border-color: var(--border-hover); color: var(--text-1); }
+    .filter-chip.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg-0);
+    }
     #canvas { width: 100%; height: 100%; }
 
-    /* Zoom Controls */
-    #zoom-controls { position: absolute; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 4px; }
-    .zoom-btn { width: 32px; height: 32px; border: 1px solid #27272a; background: #18181b; border-radius: 6px; color: #71717a; cursor: pointer; font-size: 16px; }
-    .zoom-btn:hover { background: #27272a; color: #fafafa; }
+    /* Minimap */
+    #minimap {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      width: 120px;
+      height: 80px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      opacity: 0.8;
+    }
 
-    /* Stats Bar */
-    #stats-bar { position: absolute; bottom: 20px; left: 20px; display: flex; gap: 16px; background: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 10px 16px; }
+    /* Stats */
+    #stats {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      display: flex;
+      gap: 12px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 16px;
+    }
     .stat { text-align: center; }
-    .stat-value { font-size: 18px; font-weight: 700; color: #fafafa; }
-    .stat-label { font-size: 9px; color: #52525b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 16px; font-weight: 700; color: var(--text-0); }
+    .stat-label { font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; }
 
-    /* Right Panel - Detail */
-    #right-panel { width: 420px; background: #111113; border-left: 1px solid #27272a; display: flex; flex-direction: column; overflow: hidden; }
-    #right-panel.collapsed { width: 0; border: none; }
-    #detail-header { padding: 16px; border-bottom: 1px solid #27272a; display: flex; align-items: center; justify-content: space-between; }
-    #detail-header h2 { font-size: 14px; font-weight: 600; color: #fafafa; }
-    #detail-content { flex: 1; overflow-y: auto; padding: 16px; }
+    /* Zoom */
+    #zoom-controls {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .zoom-btn {
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--border);
+      background: var(--bg-2);
+      border-radius: var(--radius);
+      color: var(--text-2);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .zoom-btn:hover { background: var(--bg-3); color: var(--text-0); }
+
+    /* ============ DETAIL PANEL ============ */
+    #detail-panel {
+      width: 380px;
+      background: var(--bg-1);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width 0.2s, opacity 0.2s;
+    }
+    #detail-panel.collapsed { width: 0; border: none; opacity: 0; pointer-events: none; }
+
+    #detail-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    #detail-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-0);
+      line-height: 1.4;
+    }
+    #detail-header .subtitle {
+      font-size: 11px;
+      color: var(--text-2);
+      margin-top: 2px;
+    }
+    .close-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-sm);
+      color: var(--text-2);
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .close-btn:hover { background: var(--bg-3); color: var(--text-0); }
+
+    #detail-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
 
     /* Detail Sections */
     .detail-section { margin-bottom: 24px; }
-    .detail-section h4 { font-size: 10px; font-weight: 600; color: #52525b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-    .detail-field { margin-bottom: 12px; }
-    .detail-label { font-size: 11px; color: #71717a; margin-bottom: 4px; }
-    .detail-value { font-size: 13px; color: #fafafa; }
-    .detail-input { width: 100%; background: #1f1f23; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #fafafa; font-size: 13px; }
-    .detail-input:focus { border-color: #22c55e; outline: none; }
-    .detail-select { width: 100%; background: #1f1f23; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #fafafa; font-size: 13px; }
+    .detail-section h4 {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .field-group { margin-bottom: 14px; }
+    .field-label {
+      font-size: 11px;
+      color: var(--text-2);
+      margin-bottom: 4px;
+    }
+    .field-value {
+      font-size: 13px;
+      color: var(--text-0);
+    }
+
+    /* Inline Editable */
+    .editable {
+      cursor: text;
+      padding: 6px 10px;
+      margin: -6px -10px;
+      border-radius: var(--radius-sm);
+      transition: background 0.1s;
+    }
+    .editable:hover { background: var(--bg-2); }
+    .editable:focus {
+      background: var(--bg-2);
+      outline: none;
+      box-shadow: inset 0 0 0 1px var(--accent);
+    }
+
+    textarea.editable {
+      width: calc(100% + 20px);
+      resize: none;
+      background: transparent;
+      border: none;
+      color: var(--text-0);
+      font-size: 13px;
+      font-family: inherit;
+      line-height: 1.5;
+    }
 
     /* Message Cards */
-    .message-card { background: #1f1f23; border: 1px solid #27272a; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
-    .message-card.sms { border-left: 3px solid #22c55e; }
-    .message-card.email { border-left: 3px solid #3b82f6; }
-    .message-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .message-id { font-size: 11px; font-weight: 600; color: #71717a; }
-    .message-meta { display: flex; gap: 6px; }
-    .message-timing { font-size: 10px; color: #52525b; background: #27272a; padding: 2px 6px; border-radius: 4px; }
-    .message-channel { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
-    .message-channel.sms { background: #22c55e22; color: #4ade80; }
-    .message-channel.email { background: #3b82f622; color: #60a5fa; }
-    .message-subject { font-size: 12px; font-weight: 500; color: #fafafa; margin-bottom: 6px; padding: 6px 8px; background: #27272a; border-radius: 4px; }
-    .message-content { font-size: 11px; color: #a1a1aa; line-height: 1.5; white-space: pre-wrap; max-height: 150px; overflow-y: auto; padding: 8px; background: #0a0a0c; border-radius: 4px; font-family: 'SF Mono', Monaco, monospace; }
-    .message-edit-btn { padding: 4px 8px; font-size: 10px; background: transparent; border: 1px solid #3f3f46; border-radius: 4px; color: #71717a; cursor: pointer; }
-    .message-edit-btn:hover { background: #22c55e; border-color: #22c55e; color: black; }
+    .msg-card {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .msg-card:hover { border-color: var(--border-hover); }
+    .msg-card.sms { border-left: 3px solid var(--accent); }
+    .msg-card.email { border-left: 3px solid var(--blue); }
 
-    /* Linked SOPs */
-    .linked-sop { display: flex; align-items: center; padding: 8px 10px; background: #1f1f23; border-radius: 6px; margin-bottom: 6px; cursor: pointer; }
-    .linked-sop:hover { background: #27272a; }
-    .linked-sop-icon { margin-right: 8px; color: #3b82f6; }
-    .linked-sop-title { font-size: 12px; color: #fafafa; flex: 1; }
-    .add-sop-btn { display: flex; align-items: center; justify-content: center; padding: 8px; border: 1px dashed #3f3f46; border-radius: 6px; color: #52525b; font-size: 11px; cursor: pointer; }
-    .add-sop-btn:hover { border-color: #22c55e; color: #22c55e; }
+    .msg-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .msg-id { font-size: 10px; font-weight: 700; color: var(--text-2); }
+    .msg-badges { display: flex; gap: 4px; }
+    .msg-badge {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    .msg-badge.timing { background: var(--bg-3); color: var(--text-2); }
+    .msg-badge.sms { background: var(--accent-dim); color: var(--accent); }
+    .msg-badge.email { background: rgba(59, 130, 246, 0.15); color: var(--blue); }
 
-    /* Connections */
-    .connection-item { display: flex; align-items: center; padding: 6px 0; font-size: 12px; }
-    .connection-type { color: #52525b; width: 80px; }
-    .connection-target { color: #22c55e; cursor: pointer; }
-    .connection-target:hover { text-decoration: underline; }
+    .msg-subject {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-0);
+      margin-bottom: 6px;
+      padding: 6px 8px;
+      background: var(--bg-3);
+      border-radius: var(--radius-sm);
+    }
+    .msg-preview {
+      font-size: 11px;
+      color: var(--text-2);
+      line-height: 1.5;
+      max-height: 60px;
+      overflow: hidden;
+    }
 
-    /* AI Chat */
-    #ai-chat { position: fixed; bottom: 20px; right: 460px; width: 380px; max-height: 500px; background: #18181b; border: 1px solid #27272a; border-radius: 12px; display: none; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.5); z-index: 1000; }
-    #ai-chat.visible { display: flex; }
-    #ai-chat-header { padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; align-items: center; justify-content: space-between; }
-    #ai-chat-header h3 { font-size: 13px; font-weight: 600; color: #fafafa; display: flex; align-items: center; gap: 8px; }
-    #ai-chat-close { background: none; border: none; color: #71717a; cursor: pointer; font-size: 16px; }
-    #ai-chat-messages { flex: 1; overflow-y: auto; padding: 16px; max-height: 350px; }
-    .ai-message { margin-bottom: 16px; }
-    .ai-message.user { text-align: right; }
-    .ai-message-content { display: inline-block; max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
-    .ai-message.user .ai-message-content { background: #22c55e; color: black; }
-    .ai-message.assistant .ai-message-content { background: #27272a; color: #fafafa; text-align: left; }
-    .ai-links { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
-    .ai-link { font-size: 11px; color: #22c55e; background: #22c55e22; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
-    .ai-link:hover { background: #22c55e33; }
-    #ai-chat-input { padding: 12px 16px; border-top: 1px solid #27272a; display: flex; gap: 8px; }
-    #ai-chat-input input { flex: 1; background: #27272a; border: 1px solid #3f3f46; border-radius: 6px; padding: 8px 12px; color: #fafafa; font-size: 13px; }
-    #ai-chat-input button { padding: 8px 16px; background: #22c55e; border: none; border-radius: 6px; color: black; font-weight: 600; cursor: pointer; }
+    /* Link Pills */
+    .link-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .link-pill {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 11px;
+      color: var(--text-1);
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .link-pill:hover { border-color: var(--accent); color: var(--accent); }
+    .link-pill .icon { font-size: 12px; }
 
-    /* AI Chat Toggle */
-    #ai-chat-toggle { position: fixed; bottom: 20px; right: 460px; width: 48px; height: 48px; background: linear-gradient(135deg, #22c55e, #06b6d4); border: none; border-radius: 50%; color: white; font-size: 20px; cursor: pointer; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3); z-index: 999; }
-    #ai-chat-toggle:hover { transform: scale(1.05); }
-    #ai-chat-toggle.hidden { display: none; }
+    .add-link {
+      padding: 6px 10px;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text-3);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .add-link:hover { border-color: var(--accent); color: var(--accent); }
 
-    /* Kanban View */
-    #kanban-view { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #0a0a0c; padding: 20px; overflow-x: auto; }
-    #kanban-view.visible { display: block; }
-    .kanban-container { display: flex; gap: 16px; height: 100%; }
-    .kanban-column { width: 260px; min-width: 260px; background: #111113; border: 1px solid #27272a; border-radius: 10px; display: flex; flex-direction: column; max-height: 100%; }
-    .kanban-column-header { padding: 12px 14px; border-bottom: 1px solid #27272a; display: flex; align-items: center; gap: 8px; }
-    .kanban-column-header .dot { width: 8px; height: 8px; border-radius: 50%; }
-    .kanban-column-header h4 { font-size: 12px; font-weight: 600; color: #fafafa; flex: 1; }
-    .kanban-column-header .count { font-size: 10px; color: #52525b; }
-    .kanban-column-body { flex: 1; overflow-y: auto; padding: 8px; }
-    .kanban-card { background: #1f1f23; border: 1px solid #27272a; border-radius: 6px; padding: 10px; margin-bottom: 8px; cursor: pointer; }
-    .kanban-card:hover { border-color: #22c55e; }
-    .kanban-card-id { font-size: 10px; font-weight: 700; color: #22c55e; margin-bottom: 4px; }
-    .kanban-card-name { font-size: 12px; color: #fafafa; margin-bottom: 6px; }
-    .kanban-card-meta { font-size: 10px; color: #52525b; }
+    /* ============ COMMAND PALETTE ============ */
+    #cmd-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 120px;
+      z-index: 1000;
+    }
+    #cmd-overlay.visible { display: flex; }
+
+    #cmd-palette {
+      width: 560px;
+      max-height: 420px;
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #cmd-input-wrap {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    #cmd-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      color: var(--text-0);
+      font-family: inherit;
+    }
+    #cmd-input::placeholder { color: var(--text-3); }
+
+    #cmd-results {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .cmd-group { margin-bottom: 12px; }
+    .cmd-group-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 4px 12px;
+      margin-bottom: 4px;
+    }
+
+    .cmd-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.05s;
+    }
+    .cmd-item:hover, .cmd-item.selected { background: var(--bg-3); }
+    .cmd-item .icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      margin-right: 12px;
+    }
+    .cmd-item .label { flex: 1; font-size: 13px; color: var(--text-0); }
+    .cmd-item .meta { font-size: 11px; color: var(--text-3); }
+    .cmd-item .shortcut {
+      font-size: 10px;
+      background: var(--bg-2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--text-2);
+    }
+
+    #cmd-footer {
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 16px;
+      font-size: 11px;
+      color: var(--text-3);
+    }
+    #cmd-footer span { display: flex; align-items: center; gap: 4px; }
+    #cmd-footer kbd {
+      background: var(--bg-3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: inherit;
+    }
+
+    /* ============ AI ASSISTANT ============ */
+    #ai-toggle {
+      position: fixed;
+      bottom: 20px;
+      right: 420px;
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--accent), #06b6d4);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+      z-index: 900;
+      transition: transform 0.15s;
+    }
+    #ai-toggle:hover { transform: scale(1.08); }
+    #ai-toggle.hidden { display: none; }
+
+    #ai-panel {
+      position: fixed;
+      bottom: 20px;
+      right: 420px;
+      width: 360px;
+      max-height: 480px;
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      display: none;
+      flex-direction: column;
+      z-index: 1000;
+    }
+    #ai-panel.visible { display: flex; }
+
+    #ai-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #ai-header h3 {
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #ai-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      max-height: 340px;
+    }
+    .ai-msg { margin-bottom: 14px; }
+    .ai-msg.user { text-align: right; }
+    .ai-msg-bubble {
+      display: inline-block;
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .ai-msg.user .ai-msg-bubble { background: var(--accent); color: #000; }
+    .ai-msg.bot .ai-msg-bubble { background: var(--bg-3); color: var(--text-0); text-align: left; }
+
+    .ai-quick-links { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .ai-quick-link {
+      font-size: 10px;
+      padding: 4px 8px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+    .ai-quick-link:hover { background: rgba(34, 197, 94, 0.25); }
+
+    #ai-input-wrap {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+    #ai-input {
+      flex: 1;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      color: var(--text-0);
+      font-size: 13px;
+      font-family: inherit;
+    }
+    #ai-input:focus { border-color: var(--accent); outline: none; }
+    #ai-send {
+      padding: 8px 14px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      color: #000;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    #ai-send:hover { background: #16a34a; }
+
+    /* ============ KEYBOARD HINT ============ */
+    #keyboard-hint {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 16px;
+      font-size: 11px;
+      color: var(--text-2);
+      display: flex;
+      gap: 16px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      z-index: 100;
+    }
+    #keyboard-hint.visible { opacity: 1; }
+    #keyboard-hint kbd {
+      background: var(--bg-3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--text-1);
+    }
+
+    /* ============ SCROLLBAR ============ */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+    /* ============ MOBILE ============ */
+    @media (max-width: 768px) {
+      body { overflow: auto; }
+      #app { height: auto; min-height: 100vh; }
+
+      #topbar {
+        height: auto;
+        flex-wrap: wrap;
+        padding: 12px;
+        gap: 10px;
+      }
+      #breadcrumbs { display: none; }
+      #cmd-trigger { order: 3; width: 100%; margin: 0; justify-content: center; }
+      #cmd-trigger kbd { display: none; }
+      .topbar-actions { order: 2; margin-left: auto; }
+
+      #main { flex-direction: column; height: auto; }
+
+      #sidebar {
+        width: 100%;
+        max-height: 50vh;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      #canvas-area { min-height: 60vh; }
+      #canvas-toolbar { flex-wrap: wrap; height: auto; padding: 10px; gap: 8px; }
+      .view-switcher { width: 100%; }
+      .view-btn { flex: 1; text-align: center; }
+      .toolbar-sep { display: none; }
+      .filter-chips { width: 100%; overflow-x: auto; flex-wrap: nowrap; }
+      .filter-chip { white-space: nowrap; }
+
+      #detail-panel {
+        position: fixed;
+        inset: 0;
+        width: 100% !important;
+        z-index: 1000;
+        transition: transform 0.3s;
+      }
+      #detail-panel.collapsed { transform: translateX(100%); opacity: 1; pointer-events: none; }
+      #detail-panel:not(.collapsed) { transform: translateX(0); }
+
+      #stats { left: 10px; right: 10px; bottom: 10px; flex-wrap: wrap; justify-content: center; gap: 16px; }
+      #zoom-controls { top: 10px; right: 10px; }
+
+      #cmd-palette { width: 95%; max-width: 400px; margin: 20px; }
+
+      #ai-toggle { right: 20px; bottom: 80px; }
+      #ai-panel { right: 10px; left: 10px; width: auto; bottom: 80px; }
+
+      #keyboard-hint { display: none; }
+
+      /* Touch-friendly tap targets */
+      .module-row { padding: 12px; }
+      .child-item { padding: 10px; }
+      .cmd-item { padding: 14px 12px; }
+      .topbar-btn { padding: 10px 16px; }
+    }
+
+    @media (max-width: 480px) {
+      .logo span { display: none; }
+      .topbar-btn:not(.primary) { display: none; }
+      #stats { padding: 8px 12px; }
+      .stat-value { font-size: 14px; }
+    }
   </style>
 </head>
 <body>
   <div id="app">
-    <!-- Header -->
-    <header id="header">
-      <span class="logo">Mission Control</span>
-      <select class="account-select">
-        <option>Burton Method</option>
-        <option>Signet AI Digest</option>
-      </select>
-      <div class="view-tabs">
-        <button class="view-tab active" data-view="canvas">Canvas</button>
-        <button class="view-tab" data-view="kanban">Kanban</button>
-        <button class="view-tab" data-view="timeline">Timeline</button>
-        <button class="view-tab" data-view="table">Table</button>
+    <!-- Topbar -->
+    <header id="topbar">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>
+          <path d="M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+        </svg>
+        Mission Control
       </div>
-      <div class="header-search">
-        <input type="text" placeholder="Search modules, assets, SOPs... (Cmd+K)" />
-      </div>
-      <div class="header-actions">
-        <button class="header-btn" onclick="toggleAIChat()">Ask AI</button>
-        <button class="header-btn">Export</button>
-        <button class="header-btn primary">Deploy to GHL</button>
+
+      <nav id="breadcrumbs">
+        <span class="breadcrumb" onclick="goHome()">Home</span>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb current" id="bc-current">All Modules</span>
+      </nav>
+
+      <button id="cmd-trigger" onclick="openCmdPalette()">
+        Search or jump to... <kbd>⌘K</kbd>
+      </button>
+
+      <div class="topbar-actions">
+        <button class="topbar-btn" onclick="toggleAI()">Ask AI</button>
+        <button class="topbar-btn primary">Deploy</button>
       </div>
     </header>
 
-    <!-- Main Content -->
+    <!-- Main -->
     <main id="main">
-      <!-- Left Panel: Module Navigator -->
-      <aside id="left-panel">
-        <div class="panel-header">
+      <!-- Sidebar -->
+      <aside id="sidebar">
+        <div class="sidebar-header">
           <h3>Modules</h3>
-          <button title="Add Module">+</button>
+          <button title="Add module">+</button>
         </div>
-        <div id="module-tree"></div>
-        <div id="sop-section">
-          <div class="panel-header">
-            <h3>SOPs</h3>
-            <button title="Add SOP">+</button>
-          </div>
-          <div class="sop-item"><span class="sop-icon">&#128196;</span> 48-Hour Window Management</div>
-          <div class="sop-item"><span class="sop-icon">&#128196;</span> Application Processing Guide</div>
-          <div class="sop-item"><span class="sop-icon">&#128196;</span> Claim Onboarding Checklist</div>
-        </div>
+        <div id="module-list"></div>
       </aside>
 
-      <!-- Center Panel: Canvas -->
-      <section id="center-panel">
+      <!-- Canvas -->
+      <section id="canvas-area">
         <div id="canvas-toolbar">
-          <div class="toolbar-group">
-            <button class="toolbar-btn active">All Phases</button>
-            <button class="toolbar-btn">Application</button>
-            <button class="toolbar-btn">48hr Window</button>
-            <button class="toolbar-btn">Claimed</button>
-            <button class="toolbar-btn">Recovery</button>
+          <div class="view-switcher">
+            <button class="view-btn active" data-view="canvas">Canvas</button>
+            <button class="view-btn" data-view="kanban">Kanban</button>
+            <button class="view-btn" data-view="table">Table</button>
           </div>
-          <div class="toolbar-separator"></div>
-          <div class="toolbar-group">
-            <button class="toolbar-btn">Show Links</button>
-            <button class="toolbar-btn">Show Gaps</button>
+          <div class="toolbar-sep"></div>
+          <div class="filter-chips">
+            <button class="filter-chip active">All</button>
+            <button class="filter-chip">Application</button>
+            <button class="filter-chip">48hr Window</button>
+            <button class="filter-chip">Claimed</button>
+            <button class="filter-chip">Recovery</button>
           </div>
         </div>
         <div id="canvas-container">
           <svg id="canvas"></svg>
-          <div id="kanban-view"></div>
           <div id="zoom-controls">
             <button class="zoom-btn" id="zoom-in">+</button>
-            <button class="zoom-btn" id="zoom-out">-</button>
-            <button class="zoom-btn" id="zoom-reset">&#8634;</button>
+            <button class="zoom-btn" id="zoom-out">−</button>
+            <button class="zoom-btn" id="zoom-fit">⟳</button>
           </div>
-          <div id="stats-bar">
-            <div class="stat"><div class="stat-value">8</div><div class="stat-label">Modules</div></div>
-            <div class="stat"><div class="stat-value">18</div><div class="stat-label">Sequences</div></div>
-            <div class="stat"><div class="stat-value">47</div><div class="stat-label">Messages</div></div>
-            <div class="stat"><div class="stat-value">12</div><div class="stat-label">SOPs</div></div>
-            <div class="stat"><div class="stat-value">85%</div><div class="stat-label">Health</div></div>
+          <div id="stats">
+            <div class="stat"><div class="stat-value" id="stat-modules">5</div><div class="stat-label">Modules</div></div>
+            <div class="stat"><div class="stat-value" id="stat-seqs">15</div><div class="stat-label">Sequences</div></div>
+            <div class="stat"><div class="stat-value" id="stat-msgs">35</div><div class="stat-label">Messages</div></div>
+            <div class="stat"><div class="stat-value" id="stat-health">85%</div><div class="stat-label">Health</div></div>
           </div>
         </div>
       </section>
 
-      <!-- Right Panel: Detail -->
-      <aside id="right-panel">
+      <!-- Detail Panel -->
+      <aside id="detail-panel" class="collapsed">
         <div id="detail-header">
-          <h2 id="detail-title">Select an item</h2>
-          <button onclick="closeDetail()" style="background:none;border:none;color:#71717a;cursor:pointer;font-size:18px;">&times;</button>
+          <div>
+            <h2 id="detail-title">Details</h2>
+            <div class="subtitle" id="detail-subtitle"></div>
+          </div>
+          <button class="close-btn" onclick="closeDetail()">×</button>
         </div>
-        <div id="detail-content">
-          <p style="color:#52525b;font-size:13px;text-align:center;margin-top:40px;">Click a module or sequence to view details</p>
-        </div>
+        <div id="detail-content"></div>
       </aside>
     </main>
   </div>
 
-  <!-- AI Chat -->
-  <button id="ai-chat-toggle" onclick="toggleAIChat()">&#128172;</button>
-  <div id="ai-chat">
-    <div id="ai-chat-header">
-      <h3>&#128172; Ask about Burton Method</h3>
-      <button id="ai-chat-close" onclick="toggleAIChat()">&times;</button>
+  <!-- Command Palette -->
+  <div id="cmd-overlay" onclick="closeCmdPalette(event)">
+    <div id="cmd-palette" onclick="event.stopPropagation()">
+      <div id="cmd-input-wrap">
+        <input type="text" id="cmd-input" placeholder="Search modules, sequences, or type a command..." autofocus />
+      </div>
+      <div id="cmd-results"></div>
+      <div id="cmd-footer">
+        <span><kbd>↑↓</kbd> Navigate</span>
+        <span><kbd>↵</kbd> Select</span>
+        <span><kbd>esc</kbd> Close</span>
+      </div>
     </div>
-    <div id="ai-chat-messages">
-      <div class="ai-message assistant">
-        <div class="ai-message-content">
-          Hi! I can answer questions about the Burton Method system. Try asking:
-          <br><br>
-          "What happens if someone misses the 48hr window?"
-          <br>
-          "Which workflows send SMS messages?"
-          <br>
-          "What's missing documentation?"
+  </div>
+
+  <!-- AI Panel -->
+  <button id="ai-toggle" onclick="toggleAI()">💬</button>
+  <div id="ai-panel">
+    <div id="ai-header">
+      <h3>🤖 AI Assistant</h3>
+      <button class="close-btn" onclick="toggleAI()">×</button>
+    </div>
+    <div id="ai-messages">
+      <div class="ai-msg bot">
+        <div class="ai-msg-bubble">
+          Ask me anything about this system. I'll answer based on actual module data, not guesses.
+          <div class="ai-quick-links">
+            <span class="ai-quick-link" onclick="askAI('What happens if someone misses the 48hr window?')">48hr window expiry</span>
+            <span class="ai-quick-link" onclick="askAI('Which sequences send SMS?')">SMS sequences</span>
+            <span class="ai-quick-link" onclick="askAI('What is missing documentation?')">Doc gaps</span>
+          </div>
         </div>
       </div>
     </div>
-    <div id="ai-chat-input">
-      <input type="text" placeholder="Ask a question..." />
-      <button onclick="sendAIMessage()">Send</button>
+    <div id="ai-input-wrap">
+      <input type="text" id="ai-input" placeholder="Ask a question..." />
+      <button id="ai-send" onclick="sendAI()">Send</button>
     </div>
+  </div>
+
+  <!-- Keyboard Hint -->
+  <div id="keyboard-hint">
+    <span><kbd>j</kbd><kbd>k</kbd> Navigate</span>
+    <span><kbd>o</kbd> Open</span>
+    <span><kbd>⌘K</kbd> Search</span>
+    <span><kbd>?</kbd> Shortcuts</span>
   </div>
 
   <script>
     // ===================== DATA =====================
-
-    const systemData = {
-      account: "Burton Method",
+    const DATA = {
       modules: [
         {
-          id: "LC",
-          name: "Lead Capture",
-          icon: "&#128205;",
-          color: "#3b82f6",
-          health: 92,
-          description: "Handles inbound leads, application forms, initial tagging",
-          assets: {
-            workflows: [
-              { id: "LC-01", name: "Application Handler", hasDoc: true },
-              { id: "LC-02", name: "Welcome Sequence", hasDoc: true }
-            ],
-            forms: [
-              { id: "LC-F1", name: "Burton Method Application", hasDoc: false }
-            ],
-            tags: [
-              { id: "LC-T1", name: "Applied", hasDoc: false },
-              { id: "LC-T2", name: "Quiz-Completed", hasDoc: false }
-            ],
-            customFields: [
-              { id: "LC-CF1", name: "application_date", hasDoc: true }
-            ]
-          },
+          id: "LC", name: "Lead Capture", icon: "📍", color: "#3b82f6", health: 92,
+          desc: "Application forms, initial tagging, lead routing",
           sequences: [
-            { id: "A1", name: "Application Received", trigger: "Form Submit", messages: 2 },
-            { id: "A2", name: "Application Review", trigger: "24hr No Decision", messages: 1 },
-            { id: "A3", name: "More Info Needed", trigger: "Incomplete App", messages: 1 }
+            { id: "A1", name: "Application Received", trigger: "Form Submit", msgs: 2 },
+            { id: "A2", name: "Application Review", trigger: "24hr No Decision", msgs: 1 },
+            { id: "A3", name: "More Info Needed", trigger: "Incomplete App", msgs: 1 }
           ]
         },
         {
-          id: "AP",
-          name: "Application Processing",
-          icon: "&#128203;",
-          color: "#8b5cf6",
-          health: 78,
-          description: "Reviews applications, triggers acceptance/rejection",
-          assets: {
-            workflows: [
-              { id: "AP-01", name: "Review Queue", hasDoc: true },
-              { id: "AP-02", name: "Acceptance Trigger", hasDoc: true },
-              { id: "AP-03", name: "Rejection Handler", hasDoc: false }
-            ],
-            tags: [
-              { id: "AP-T1", name: "Under-Review", hasDoc: false },
-              { id: "AP-T2", name: "Accepted", hasDoc: true }
-            ]
-          },
+          id: "AP", name: "Application Processing", icon: "📋", color: "#8b5cf6", health: 78,
+          desc: "Review queue, acceptance/rejection triggers",
           sequences: [
-            { id: "B1", name: "Acceptance Notification", trigger: "Approved", messages: 2 },
-            { id: "B2", name: "Welcome + Next Steps", trigger: "1hr Post-Accept", messages: 1 }
+            { id: "B1", name: "Acceptance Notification", trigger: "Approved", msgs: 2 },
+            { id: "B2", name: "Welcome + Next Steps", trigger: "1hr Post-Accept", msgs: 1 }
           ]
         },
         {
-          id: "48",
-          name: "48-Hour Window",
-          icon: "&#9200;",
-          color: "#ef4444",
-          health: 95,
-          description: "Creates urgency through a time-limited claim window",
-          assets: {
-            workflows: [
-              { id: "48-01", name: "Window Start", hasDoc: true },
-              { id: "48-02", name: "24hr Reminder", hasDoc: true },
-              { id: "48-03", name: "6hr Urgent", hasDoc: true },
-              { id: "48-04", name: "Expiry Handler", hasDoc: true }
-            ],
-            customFields: [
-              { id: "48-CF1", name: "window_start", hasDoc: true },
-              { id: "48-CF2", name: "window_end", hasDoc: true }
-            ]
-          },
+          id: "48", name: "48-Hour Window", icon: "⏰", color: "#ef4444", health: 95,
+          desc: "Time-limited claim window with urgency messaging",
           sequences: [
-            { id: "W1", name: "Window Started", trigger: "Acceptance", messages: 2 },
-            { id: "W2", name: "24hr Reminder", trigger: "24hr Mark", messages: 2 },
-            { id: "W3", name: "6hr Warning", trigger: "42hr Mark", messages: 2 },
-            { id: "W4", name: "1hr Final", trigger: "47hr Mark", messages: 2 },
-            { id: "W5", name: "15min Countdown", trigger: "47hr45min", messages: 1 }
+            { id: "W1", name: "Window Started", trigger: "Acceptance", msgs: 2 },
+            { id: "W2", name: "24hr Reminder", trigger: "24hr Mark", msgs: 2 },
+            { id: "W3", name: "6hr Warning", trigger: "42hr Mark", msgs: 2 },
+            { id: "W4", name: "1hr Final", trigger: "47hr Mark", msgs: 2 },
+            { id: "W5", name: "15min Countdown", trigger: "47hr45min", msgs: 1 }
           ]
         },
         {
-          id: "CL",
-          name: "Claim & Onboarding",
-          icon: "&#127881;",
-          color: "#22c55e",
-          health: 88,
-          description: "Claim completion, welcome sequence, customer setup",
-          assets: {
-            workflows: [
-              { id: "CL-01", name: "Claim Handler", hasDoc: true },
-              { id: "CL-02", name: "Onboarding Sequence", hasDoc: true },
-              { id: "CL-03", name: "Day 1 Check-in", hasDoc: false }
-            ],
-            tags: [
-              { id: "CL-T1", name: "Claimed", hasDoc: true },
-              { id: "CL-T2", name: "Customer", hasDoc: true }
-            ]
-          },
+          id: "CL", name: "Claim & Onboarding", icon: "🎉", color: "#22c55e", health: 88,
+          desc: "Claim completion, welcome, customer setup",
           sequences: [
-            { id: "C1", name: "Claim Confirmed", trigger: "Payment", messages: 2 },
-            { id: "C2", name: "Onboarding Start", trigger: "1hr Post-Claim", messages: 1 },
-            { id: "C3", name: "Day 1 Check-in", trigger: "24hr Post-Claim", messages: 1 }
+            { id: "C1", name: "Claim Confirmed", trigger: "Payment", msgs: 2 },
+            { id: "C2", name: "Onboarding Start", trigger: "1hr Post-Claim", msgs: 1 },
+            { id: "C3", name: "Day 1 Check-in", trigger: "24hr Post-Claim", msgs: 1 }
           ]
         },
         {
-          id: "RV",
-          name: "Recovery",
-          icon: "&#128260;",
-          color: "#f59e0b",
-          health: 72,
-          description: "Window expired re-engagement paths",
-          assets: {
-            workflows: [
-              { id: "RV-01", name: "Expiry Handler", hasDoc: true },
-              { id: "RV-02", name: "Re-engagement 3d", hasDoc: false },
-              { id: "RV-03", name: "Waitlist Offer", hasDoc: false }
-            ],
-            tags: [
-              { id: "RV-T1", name: "Window-Expired", hasDoc: true }
-            ]
-          },
+          id: "RV", name: "Recovery", icon: "🔄", color: "#f59e0b", health: 72,
+          desc: "Window expiry re-engagement paths",
           sequences: [
-            { id: "R1", name: "Window Expired", trigger: "48hr No Claim", messages: 1 },
-            { id: "R2", name: "Re-engagement", trigger: "3 Days Post", messages: 1 },
-            { id: "R3", name: "Waitlist Offer", trigger: "7 Days Post", messages: 1 },
-            { id: "R4", name: "Final Re-engagement", trigger: "14 Days Post", messages: 1 }
+            { id: "R1", name: "Window Expired", trigger: "48hr No Claim", msgs: 1 },
+            { id: "R2", name: "Re-engagement", trigger: "3 Days Post", msgs: 1 },
+            { id: "R3", name: "Waitlist Offer", trigger: "7 Days Post", msgs: 1 },
+            { id: "R4", name: "Final Re-engagement", trigger: "14 Days Post", msgs: 1 }
           ]
         }
       ],
-      sequenceMessages: {
+      messages: {
         "W1": [
-          { id: "W1-1", timing: "0min", channel: "email", subject: "You're in - 48 hours starts NOW", content: "{{first_name}},\\n\\nYou're accepted.\\n\\nYour 48-hour window to claim your spot starts right now.\\n\\nDeadline: {{window_end_timestamp}}\\n\\n..." },
-          { id: "W1-2", timing: "0min", channel: "sms", content: "{{first_name}} - You're accepted! 48hr window starts NOW. Claim by {{window_end_short}}. Link in your email or reply here with questions. - Jake" }
+          { id: "W1-1", timing: "0min", channel: "email", subject: "You're in - 48 hours starts NOW", content: "{{first_name}},\\n\\nYou're accepted.\\n\\nYour 48-hour window to claim your spot starts right now.\\n\\nDeadline: {{window_end_timestamp}}" },
+          { id: "W1-2", timing: "0min", channel: "sms", content: "{{first_name}} - You're accepted! 48hr window starts NOW. Claim by {{window_end_short}}. Link in your email. - Jake" }
         ],
         "W2": [
-          { id: "W2-1", timing: "24hr", channel: "email", subject: "24 hours left - halfway point", content: "{{first_name}},\\n\\n24 hours down. 24 hours to go.\\n\\nYour window closes {{window_end_timestamp}}.\\n\\n..." },
-          { id: "W2-2", timing: "24hr", channel: "sms", content: "{{first_name}} - 24 hours left on your window. Halfway point. If you're on the fence, reply and tell me what's holding you back. - Jake" }
+          { id: "W2-1", timing: "24hr", channel: "email", subject: "24 hours left - halfway point", content: "{{first_name}},\\n\\n24 hours down. 24 hours to go.\\n\\nYour window closes {{window_end_timestamp}}." },
+          { id: "W2-2", timing: "24hr", channel: "sms", content: "{{first_name}} - 24 hours left on your window. Halfway point. Reply if you have questions. - Jake" }
         ],
         "W3": [
-          { id: "W3-1", timing: "42hr", channel: "email", subject: "6 hours left - this is real", content: "{{first_name}},\\n\\n6 hours left.\\n\\nI'm not going to extend your window. I'm not going to make an exception...\\n\\n..." },
-          { id: "W3-2", timing: "42hr", channel: "sms", content: "6 hours left {{first_name}}. Window closes {{window_end_short}}. This is your last real chance to think about it. After that, decide time. - Jake" }
+          { id: "W3-1", timing: "42hr", channel: "email", subject: "6 hours left - this is real", content: "{{first_name}},\\n\\n6 hours left.\\n\\nI'm not going to extend your window. I'm not going to make an exception..." },
+          { id: "W3-2", timing: "42hr", channel: "sms", content: "6 hours left {{first_name}}. Window closes {{window_end_short}}. Last chance to think. Then decide. - Jake" }
         ],
         "W4": [
-          { id: "W4-1", timing: "47hr", channel: "email", subject: "1 hour - final call", content: "{{first_name}},\\n\\n1 hour.\\n\\nYour window closes at {{window_end_timestamp}}.\\n\\nIf you want this, claim it now...\\n\\n..." },
-          { id: "W4-2", timing: "47hr", channel: "sms", content: "1 HOUR LEFT {{first_name}}. Closes {{window_end_short}}. If you want it, now is the time: {{claim_link}}" }
+          { id: "W4-1", timing: "47hr", channel: "email", subject: "1 hour - final call", content: "{{first_name}},\\n\\n1 hour.\\n\\nYour window closes at {{window_end_timestamp}}.\\n\\nIf you want this, claim it now." },
+          { id: "W4-2", timing: "47hr", channel: "sms", content: "1 HOUR LEFT {{first_name}}. Closes {{window_end_short}}. Now or never: {{claim_link}}" }
         ],
         "W5": [
-          { id: "W5-1", timing: "47hr45min", channel: "sms", content: "15 MINUTES. Window closes at {{window_end_short}}. Last chance: {{claim_link}} - After this, your spot goes to someone else. - Jake" }
+          { id: "W5-1", timing: "47hr45min", channel: "sms", content: "15 MINUTES. Window closes at {{window_end_short}}. Last chance: {{claim_link}} - Jake" }
         ],
         "C1": [
-          { id: "C1-1", timing: "0min", channel: "email", subject: "You're in - let's go", content: "{{first_name}},\\n\\nYou did it. You're in.\\n\\nI'm genuinely excited to work with you...\\n\\n..." },
-          { id: "C1-2", timing: "0min", channel: "sms", content: "YOU'RE IN {{first_name}}! Check your email for login details. I'll be in touch within 24hrs to schedule your first session. Let's go. - Jake" }
+          { id: "C1-1", timing: "0min", channel: "email", subject: "You're in - let's go", content: "{{first_name}},\\n\\nYou did it. You're in.\\n\\nI'm excited to work with you..." },
+          { id: "C1-2", timing: "0min", channel: "sms", content: "YOU'RE IN {{first_name}}! Check your email for login details. Let's go. - Jake" }
         ]
       }
     };
 
     // ===================== STATE =====================
+    let state = {
+      view: 'canvas',
+      selectedModule: null,
+      selectedSequence: null,
+      focusedIndex: -1,
+      cmdOpen: false,
+      cmdSelected: 0,
+      aiOpen: false
+    };
 
-    let currentView = 'canvas';
-    let selectedModule = null;
-    let selectedSequence = null;
+    // ===================== HELPERS =====================
+    function $(sel) { return document.querySelector(sel); }
+    function $$(sel) { return document.querySelectorAll(sel); }
 
-    // ===================== RENDER =====================
+    function healthClass(h) {
+      return h >= 85 ? 'high' : h >= 70 ? 'medium' : 'low';
+    }
 
-    function renderModuleTree() {
-      const tree = document.getElementById('module-tree');
-      tree.innerHTML = systemData.modules.map(mod => {
-        const healthClass = mod.health >= 85 ? 'high' : mod.health >= 70 ? 'medium' : 'low';
-        return \`
-          <div class="module-item" data-module-id="\${mod.id}">
-            <div class="module-header" onclick="toggleModule('\${mod.id}')">
-              <span class="module-expand">&#9656;</span>
-              <span class="module-icon" style="background:\${mod.color}22;color:\${mod.color}">\${mod.icon}</span>
-              <span class="module-name">\${mod.name}</span>
-              <span class="module-health \${healthClass}">\${mod.health}%</span>
+    function updateBreadcrumbs(path) {
+      const bc = $('#bc-current');
+      bc.textContent = path;
+    }
+
+    // ===================== SIDEBAR =====================
+    function renderSidebar() {
+      const list = $('#module-list');
+      list.innerHTML = DATA.modules.map((mod, i) => \`
+        <div class="module-item" data-mod-id="\${mod.id}">
+          <div class="module-row" tabindex="0" onclick="selectModule('\${mod.id}')" data-idx="\${i}">
+            <span class="module-expand">›</span>
+            <span class="module-icon" style="background:\${mod.color}22;color:\${mod.color}">\${mod.icon}</span>
+            <div class="module-info">
+              <div class="module-name">\${mod.name}</div>
+              <div class="module-meta">\${mod.sequences.length} sequences</div>
             </div>
-            <div class="module-children">
-              \${renderAssetGroups(mod)}
-              <div class="asset-group">
-                <div class="asset-group-header">&#128203; Sequences</div>
-                \${mod.sequences.map(seq => \`
-                  <div class="asset-item" onclick="selectSequence('\${mod.id}', '\${seq.id}')" data-seq-id="\${seq.id}">
-                    \${seq.id}: \${seq.name}
-                    <span class="asset-doc-indicator \${systemData.sequenceMessages[seq.id] ? 'has-doc' : 'no-doc'}"></span>
-                  </div>
-                \`).join('')}
+            <div class="health-bar">
+              <div class="health-fill \${healthClass(mod.health)}" style="width:\${mod.health}%"></div>
+            </div>
+          </div>
+          <div class="module-children">
+            \${mod.sequences.map(seq => \`
+              <div class="child-item" data-seq-id="\${seq.id}" onclick="event.stopPropagation();selectSequence('\${mod.id}','\${seq.id}')">
+                <span class="child-type">\${seq.id}</span>
+                <span class="child-name">\${seq.name}</span>
+                <span class="child-indicator \${DATA.messages[seq.id] ? 'doc' : 'no-doc'}"></span>
               </div>
-            </div>
+            \`).join('')}
           </div>
-        \`;
-      }).join('');
+        </div>
+      \`).join('');
     }
 
-    function renderAssetGroups(mod) {
-      let html = '';
-      if (mod.assets.workflows?.length) {
-        html += \`
-          <div class="asset-group">
-            <div class="asset-group-header">&#9881; Workflows</div>
-            \${mod.assets.workflows.map(a => \`
-              <div class="asset-item" onclick="selectAsset('\${a.id}')">\${a.name}<span class="asset-doc-indicator \${a.hasDoc ? 'has-doc' : 'no-doc'}"></span></div>
-            \`).join('')}
-          </div>
-        \`;
-      }
-      if (mod.assets.forms?.length) {
-        html += \`
-          <div class="asset-group">
-            <div class="asset-group-header">&#128196; Forms</div>
-            \${mod.assets.forms.map(a => \`
-              <div class="asset-item" onclick="selectAsset('\${a.id}')">\${a.name}<span class="asset-doc-indicator \${a.hasDoc ? 'has-doc' : 'no-doc'}"></span></div>
-            \`).join('')}
-          </div>
-        \`;
-      }
-      if (mod.assets.tags?.length) {
-        html += \`
-          <div class="asset-group">
-            <div class="asset-group-header">&#127991; Tags</div>
-            \${mod.assets.tags.map(a => \`
-              <div class="asset-item" onclick="selectAsset('\${a.id}')">\${a.name}<span class="asset-doc-indicator \${a.hasDoc ? 'has-doc' : 'no-doc'}"></span></div>
-            \`).join('')}
-          </div>
-        \`;
-      }
-      if (mod.assets.customFields?.length) {
-        html += \`
-          <div class="asset-group">
-            <div class="asset-group-header">&#128221; Custom Fields</div>
-            \${mod.assets.customFields.map(a => \`
-              <div class="asset-item" onclick="selectAsset('\${a.id}')">\${a.name}<span class="asset-doc-indicator \${a.hasDoc ? 'has-doc' : 'no-doc'}"></span></div>
-            \`).join('')}
-          </div>
-        \`;
-      }
-      return html;
-    }
-
-    function toggleModule(modId) {
-      const item = document.querySelector(\`[data-module-id="\${modId}"]\`);
-      item.classList.toggle('expanded');
-      const expand = item.querySelector('.module-expand');
-      expand.innerHTML = item.classList.contains('expanded') ? '&#9662;' : '&#9656;';
-      selectModuleDetail(modId);
-    }
-
-    function selectModuleDetail(modId) {
-      const mod = systemData.modules.find(m => m.id === modId);
+    function selectModule(modId) {
+      const mod = DATA.modules.find(m => m.id === modId);
       if (!mod) return;
 
-      selectedModule = mod;
-      document.querySelectorAll('.module-header').forEach(h => h.classList.remove('selected'));
-      document.querySelector(\`[data-module-id="\${modId}"] .module-header\`).classList.add('selected');
+      state.selectedModule = mod;
+      state.selectedSequence = null;
 
-      const content = document.getElementById('detail-content');
-      document.getElementById('detail-title').textContent = mod.name;
+      // Toggle expansion
+      const item = $(\`[data-mod-id="\${modId}"]\`);
+      item.classList.toggle('expanded');
 
-      const totalAssets = (mod.assets.workflows?.length || 0) + (mod.assets.forms?.length || 0) +
-                          (mod.assets.tags?.length || 0) + (mod.assets.customFields?.length || 0);
-      const docCount = [...(mod.assets.workflows || []), ...(mod.assets.forms || []),
-                        ...(mod.assets.tags || []), ...(mod.assets.customFields || [])]
-                        .filter(a => a.hasDoc).length;
+      // Update selection state
+      $$('.module-row').forEach(r => r.classList.remove('selected'));
+      item.querySelector('.module-row').classList.add('selected');
 
-      content.innerHTML = \`
-        <div class="detail-section">
-          <h4>Module Info</h4>
-          <div class="detail-field">
-            <div class="detail-label">ID</div>
-            <div class="detail-value">\${mod.id}</div>
-          </div>
-          <div class="detail-field">
-            <div class="detail-label">Description</div>
-            <textarea class="detail-input" rows="3">\${mod.description}</textarea>
-          </div>
-          <div class="detail-field">
-            <div class="detail-label">Health Score</div>
-            <div class="detail-value" style="color:\${mod.health >= 85 ? '#4ade80' : mod.health >= 70 ? '#fbbf24' : '#f87171'}">\${mod.health}%</div>
-          </div>
-        </div>
-        <div class="detail-section">
-          <h4>Assets (\${totalAssets})</h4>
-          <div class="detail-field">
-            <div class="detail-label">Documentation Coverage</div>
-            <div class="detail-value">\${docCount}/\${totalAssets} assets have SOPs</div>
-          </div>
-        </div>
-        <div class="detail-section">
-          <h4>Sequences (\${mod.sequences.length})</h4>
-          \${mod.sequences.map(seq => \`
-            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #27272a;font-size:12px;">
-              <span style="color:#22c55e;font-weight:600;">\${seq.id}</span>
-              <span style="color:#fafafa;">\${seq.name}</span>
-              <span style="color:#52525b;">\${seq.messages} msgs</span>
-            </div>
-          \`).join('')}
-        </div>
-        <div class="detail-section">
-          <h4>Linked SOPs</h4>
-          <div class="linked-sop"><span class="linked-sop-icon">&#128196;</span><span class="linked-sop-title">SOP: \${mod.name} Overview</span></div>
-          <div class="add-sop-btn">+ Link SOP</div>
-        </div>
-      \`;
+      // Update breadcrumbs
+      updateBreadcrumbs(mod.name);
+
+      // Show detail panel
+      renderModuleDetail(mod);
+      $('#detail-panel').classList.remove('collapsed');
     }
 
     function selectSequence(modId, seqId) {
-      const mod = systemData.modules.find(m => m.id === modId);
+      const mod = DATA.modules.find(m => m.id === modId);
       const seq = mod?.sequences.find(s => s.id === seqId);
       if (!seq) return;
 
-      selectedSequence = seq;
-      document.querySelectorAll('.asset-item').forEach(a => a.classList.remove('selected'));
-      document.querySelector(\`[data-seq-id="\${seqId}"]\`)?.classList.add('selected');
+      state.selectedModule = mod;
+      state.selectedSequence = seq;
 
-      const messages = systemData.sequenceMessages[seqId] || [];
-      document.getElementById('detail-title').textContent = \`\${seqId}: \${seq.name}\`;
+      $$('.child-item').forEach(c => c.classList.remove('selected'));
+      $(\`[data-seq-id="\${seqId}"]\`)?.classList.add('selected');
 
-      const content = document.getElementById('detail-content');
-      content.innerHTML = \`
+      updateBreadcrumbs(\`\${mod.name} / \${seq.id}\`);
+
+      renderSequenceDetail(mod, seq);
+      $('#detail-panel').classList.remove('collapsed');
+    }
+
+    // ===================== DETAIL PANEL =====================
+    function renderModuleDetail(mod) {
+      $('#detail-title').textContent = mod.name;
+      $('#detail-subtitle').textContent = \`\${mod.id} · \${mod.sequences.length} sequences · \${mod.health}% health\`;
+
+      $('#detail-content').innerHTML = \`
         <div class="detail-section">
-          <h4>Sequence Info</h4>
-          <div class="detail-field">
-            <div class="detail-label">Trigger</div>
-            <input class="detail-input" value="\${seq.trigger}" />
-          </div>
-          <div class="detail-field">
-            <div class="detail-label">Module</div>
-            <div class="detail-value">\${mod.name} (\${mod.id})</div>
+          <h4>📝 Description</h4>
+          <div class="field-group">
+            <textarea class="editable" rows="2" onblur="saveModuleDesc('\${mod.id}', this.value)">\${mod.desc}</textarea>
           </div>
         </div>
+
         <div class="detail-section">
-          <h4>Messages (\${messages.length})</h4>
-          \${messages.map(msg => \`
-            <div class="message-card \${msg.channel}">
-              <div class="message-header">
-                <span class="message-id">\${msg.id}</span>
-                <div class="message-meta">
-                  <span class="message-timing">\${msg.timing}</span>
-                  <span class="message-channel \${msg.channel}">\${msg.channel.toUpperCase()}</span>
+          <h4>📊 Health Score</h4>
+          <div class="field-group">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div class="health-bar" style="width:100px;height:8px;">
+                <div class="health-fill \${healthClass(mod.health)}" style="width:\${mod.health}%"></div>
+              </div>
+              <span class="field-value" style="color:\${mod.health >= 85 ? 'var(--accent)' : mod.health >= 70 ? 'var(--amber)' : 'var(--red)'}">\${mod.health}%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>📋 Sequences (\${mod.sequences.length})</h4>
+          \${mod.sequences.map(seq => \`
+            <div class="msg-card" onclick="selectSequence('\${mod.id}','\${seq.id}')">
+              <div class="msg-header">
+                <span class="msg-id">\${seq.id}</span>
+                <div class="msg-badges">
+                  <span class="msg-badge timing">\${seq.trigger}</span>
                 </div>
               </div>
-              \${msg.subject ? \`<div class="message-subject">\${msg.subject}</div>\` : ''}
-              <div class="message-content">\${msg.content}</div>
+              <div class="msg-preview" style="color:var(--text-0);font-weight:500;">\${seq.name}</div>
+              <div class="msg-preview">\${seq.msgs} messages</div>
             </div>
           \`).join('')}
-          <div class="add-sop-btn">+ Add Message</div>
         </div>
+
         <div class="detail-section">
-          <h4>Linked SOPs</h4>
-          <div class="add-sop-btn">+ Link SOP</div>
+          <h4>🔗 Linked SOPs</h4>
+          <div class="link-list">
+            <div class="link-pill"><span class="icon">📄</span> \${mod.name} Overview</div>
+            <button class="add-link">+ Link SOP</button>
+          </div>
         </div>
       \`;
     }
 
-    function selectAsset(assetId) {
-      document.getElementById('detail-title').textContent = assetId;
-      document.getElementById('detail-content').innerHTML = \`
+    function renderSequenceDetail(mod, seq) {
+      const msgs = DATA.messages[seq.id] || [];
+
+      $('#detail-title').textContent = \`\${seq.id}: \${seq.name}\`;
+      $('#detail-subtitle').textContent = \`\${mod.name} · \${seq.trigger} · \${msgs.length} messages\`;
+
+      $('#detail-content').innerHTML = \`
         <div class="detail-section">
-          <h4>Asset Details</h4>
-          <div class="detail-field">
-            <div class="detail-label">ID</div>
-            <div class="detail-value">\${assetId}</div>
-          </div>
-          <div class="detail-field">
-            <div class="detail-label">Type</div>
-            <div class="detail-value">Workflow</div>
-          </div>
-          <div class="detail-field">
-            <div class="detail-label">Description</div>
-            <textarea class="detail-input" rows="3" placeholder="Add description..."></textarea>
+          <h4>⚡ Trigger</h4>
+          <div class="field-group">
+            <div class="field-value editable" contenteditable="true">\${seq.trigger}</div>
           </div>
         </div>
+
         <div class="detail-section">
-          <h4>Linked SOPs</h4>
-          <div class="add-sop-btn">+ Link SOP</div>
+          <h4>💬 Messages (\${msgs.length})</h4>
+          \${msgs.length ? msgs.map(msg => \`
+            <div class="msg-card \${msg.channel}">
+              <div class="msg-header">
+                <span class="msg-id">\${msg.id}</span>
+                <div class="msg-badges">
+                  <span class="msg-badge timing">\${msg.timing}</span>
+                  <span class="msg-badge \${msg.channel}">\${msg.channel.toUpperCase()}</span>
+                </div>
+              </div>
+              \${msg.subject ? \`<div class="msg-subject">\${msg.subject}</div>\` : ''}
+              <div class="msg-preview">\${msg.content.substring(0, 120)}...</div>
+            </div>
+          \`).join('') : '<p style="color:var(--text-3);font-size:12px;">No messages yet. Click + to add.</p>'}
+          <button class="add-link" style="width:100%;margin-top:8px;">+ Add Message</button>
+        </div>
+
+        <div class="detail-section">
+          <h4>🔗 Links</h4>
+          <div class="link-list">
+            <div class="link-pill"><span class="icon">⚙️</span> Workflow: \${mod.id}-\${seq.id}</div>
+            <button class="add-link">+ Add Link</button>
+          </div>
         </div>
       \`;
     }
 
     function closeDetail() {
-      document.getElementById('right-panel').classList.add('collapsed');
+      $('#detail-panel').classList.add('collapsed');
+      updateBreadcrumbs('All Modules');
+    }
+
+    function saveModuleDesc(modId, value) {
+      const mod = DATA.modules.find(m => m.id === modId);
+      if (mod) mod.desc = value;
     }
 
     // ===================== CANVAS =====================
-
     function drawCanvas() {
       const svg = d3.select('#canvas');
       const container = document.getElementById('canvas-container');
       const width = container.clientWidth;
       const height = container.clientHeight;
       svg.attr('viewBox', \`0 0 \${width} \${height}\`);
+      svg.selectAll('*').remove();
 
       const g = svg.append('g');
-      const zoom = d3.zoom().scaleExtent([0.3, 3]).on('zoom', e => g.attr('transform', e.transform));
+      const zoom = d3.zoom()
+        .scaleExtent([0.3, 2])
+        .on('zoom', e => g.attr('transform', e.transform));
       svg.call(zoom);
 
-      // Draw modules as columns
-      const moduleWidth = 200;
-      const moduleGap = 40;
-      const startX = 60;
-      const startY = 40;
+      const moduleWidth = 220;
+      const moduleGap = 50;
+      const startX = 50;
+      const startY = 30;
 
-      systemData.modules.forEach((mod, i) => {
+      DATA.modules.forEach((mod, i) => {
         const x = startX + i * (moduleWidth + moduleGap);
-        const seqHeight = mod.sequences.length * 50 + 60;
+        const seqH = mod.sequences.length * 48 + 70;
 
-        // Module box
+        // Module background
         g.append('rect')
           .attr('x', x)
           .attr('y', startY)
           .attr('width', moduleWidth)
-          .attr('height', seqHeight)
-          .attr('rx', 10)
-          .attr('fill', mod.color + '11')
-          .attr('stroke', mod.color)
-          .attr('stroke-width', 2);
+          .attr('height', seqH)
+          .attr('rx', 12)
+          .attr('fill', mod.color + '08')
+          .attr('stroke', mod.color + '40')
+          .attr('stroke-width', 1.5);
 
-        // Module header
+        // Header bar
+        g.append('rect')
+          .attr('x', x)
+          .attr('y', startY)
+          .attr('width', moduleWidth)
+          .attr('height', 44)
+          .attr('rx', 12)
+          .attr('fill', mod.color + '15');
+
+        // Module name
         g.append('text')
-          .attr('x', x + 15)
-          .attr('y', startY + 25)
+          .attr('x', x + 14)
+          .attr('y', startY + 26)
           .attr('fill', mod.color)
           .attr('font-size', '13px')
-          .attr('font-weight', '700')
+          .attr('font-weight', '600')
           .text(mod.name);
 
-        // Health badge
+        // Health indicator
         g.append('rect')
-          .attr('x', x + moduleWidth - 45)
-          .attr('y', startY + 12)
-          .attr('width', 35)
+          .attr('x', x + moduleWidth - 50)
+          .attr('y', startY + 14)
+          .attr('width', 36)
           .attr('height', 18)
           .attr('rx', 9)
-          .attr('fill', mod.health >= 85 ? '#22c55e22' : mod.health >= 70 ? '#f59e0b22' : '#ef444422');
+          .attr('fill', healthClass(mod.health) === 'high' ? '#22c55e22' : healthClass(mod.health) === 'medium' ? '#f59e0b22' : '#ef444422');
 
         g.append('text')
-          .attr('x', x + moduleWidth - 27)
-          .attr('y', startY + 24)
-          .attr('fill', mod.health >= 85 ? '#4ade80' : mod.health >= 70 ? '#fbbf24' : '#f87171')
+          .attr('x', x + moduleWidth - 32)
+          .attr('y', startY + 26)
+          .attr('fill', healthClass(mod.health) === 'high' ? '#4ade80' : healthClass(mod.health) === 'medium' ? '#fbbf24' : '#f87171')
           .attr('font-size', '10px')
           .attr('font-weight', '600')
           .attr('text-anchor', 'middle')
@@ -754,170 +1369,323 @@ const html = `<!DOCTYPE html>
 
         // Sequences
         mod.sequences.forEach((seq, j) => {
-          const seqY = startY + 50 + j * 50;
+          const sy = startY + 54 + j * 48;
 
           g.append('rect')
             .attr('x', x + 10)
-            .attr('y', seqY)
+            .attr('y', sy)
             .attr('width', moduleWidth - 20)
             .attr('height', 40)
-            .attr('rx', 6)
+            .attr('rx', 8)
             .attr('fill', '#1f1f23')
             .attr('stroke', '#27272a')
             .style('cursor', 'pointer')
-            .on('click', () => selectSequence(mod.id, seq.id));
+            .on('click', () => selectSequence(mod.id, seq.id))
+            .on('mouseover', function() { d3.select(this).attr('stroke', mod.color); })
+            .on('mouseout', function() { d3.select(this).attr('stroke', '#27272a'); });
 
           g.append('text')
-            .attr('x', x + 20)
-            .attr('y', seqY + 16)
+            .attr('x', x + 22)
+            .attr('y', sy + 16)
             .attr('fill', mod.color)
             .attr('font-size', '10px')
             .attr('font-weight', '700')
+            .style('pointer-events', 'none')
             .text(seq.id);
 
           g.append('text')
-            .attr('x', x + 20)
-            .attr('y', seqY + 30)
+            .attr('x', x + 22)
+            .attr('y', sy + 30)
             .attr('fill', '#fafafa')
             .attr('font-size', '11px')
-            .text(seq.name.length > 20 ? seq.name.substring(0, 20) + '...' : seq.name);
+            .style('pointer-events', 'none')
+            .text(seq.name.length > 22 ? seq.name.substring(0, 22) + '...' : seq.name);
 
-          // Message count badge
+          // Message count
           g.append('text')
-            .attr('x', x + moduleWidth - 25)
-            .attr('y', seqY + 24)
+            .attr('x', x + moduleWidth - 26)
+            .attr('y', sy + 24)
             .attr('fill', '#52525b')
             .attr('font-size', '10px')
-            .text(seq.messages);
+            .attr('text-anchor', 'middle')
+            .style('pointer-events', 'none')
+            .text(seq.msgs);
         });
       });
 
       // Zoom controls
-      document.getElementById('zoom-in').onclick = () => svg.transition().call(zoom.scaleBy, 1.3);
+      document.getElementById('zoom-in').onclick = () => svg.transition().call(zoom.scaleBy, 1.4);
       document.getElementById('zoom-out').onclick = () => svg.transition().call(zoom.scaleBy, 0.7);
-      document.getElementById('zoom-reset').onclick = () => svg.transition().call(zoom.transform, d3.zoomIdentity);
+      document.getElementById('zoom-fit').onclick = () => svg.transition().call(zoom.transform, d3.zoomIdentity);
+
+      // Update stats
+      const totalSeqs = DATA.modules.reduce((a, m) => a + m.sequences.length, 0);
+      const totalMsgs = DATA.modules.reduce((a, m) => a + m.sequences.reduce((b, s) => b + s.msgs, 0), 0);
+      const avgHealth = Math.round(DATA.modules.reduce((a, m) => a + m.health, 0) / DATA.modules.length);
+      $('#stat-modules').textContent = DATA.modules.length;
+      $('#stat-seqs').textContent = totalSeqs;
+      $('#stat-msgs').textContent = totalMsgs;
+      $('#stat-health').textContent = avgHealth + '%';
     }
 
-    // ===================== KANBAN =====================
+    // ===================== COMMAND PALETTE =====================
+    function openCmdPalette() {
+      state.cmdOpen = true;
+      state.cmdSelected = 0;
+      $('#cmd-overlay').classList.add('visible');
+      $('#cmd-input').value = '';
+      $('#cmd-input').focus();
+      renderCmdResults('');
+    }
 
-    function renderKanban() {
-      const kanban = document.getElementById('kanban-view');
-      const phases = [
-        { id: 'application', name: 'Application', color: '#3b82f6', modules: ['LC', 'AP'] },
-        { id: 'window', name: '48hr Window', color: '#ef4444', modules: ['48'] },
-        { id: 'claimed', name: 'Claimed', color: '#22c55e', modules: ['CL'] },
-        { id: 'recovery', name: 'Recovery', color: '#f59e0b', modules: ['RV'] }
+    function closeCmdPalette(e) {
+      if (e && e.target !== $('#cmd-overlay')) return;
+      state.cmdOpen = false;
+      $('#cmd-overlay').classList.remove('visible');
+    }
+
+    function renderCmdResults(query) {
+      const results = $('#cmd-results');
+      const q = query.toLowerCase();
+
+      // Build searchable items
+      const items = [];
+
+      // Modules
+      DATA.modules.forEach(mod => {
+        if (!q || mod.name.toLowerCase().includes(q) || mod.id.toLowerCase().includes(q)) {
+          items.push({ type: 'module', label: mod.name, meta: \`\${mod.id} · \${mod.sequences.length} seqs\`, icon: mod.icon, color: mod.color, action: () => selectModule(mod.id) });
+        }
+        // Sequences
+        mod.sequences.forEach(seq => {
+          if (!q || seq.name.toLowerCase().includes(q) || seq.id.toLowerCase().includes(q)) {
+            items.push({ type: 'sequence', label: \`\${seq.id}: \${seq.name}\`, meta: mod.name, icon: '📋', color: mod.color, action: () => selectSequence(mod.id, seq.id) });
+          }
+        });
+      });
+
+      // Commands
+      const commands = [
+        { label: 'New Module', meta: 'Create a new module', icon: '➕', shortcut: '⌘N', action: () => console.log('new module') },
+        { label: 'Deploy to GHL', meta: 'Push changes to GoHighLevel', icon: '🚀', shortcut: '⌘⇧D', action: () => console.log('deploy') },
+        { label: 'Export JSON', meta: 'Download system data', icon: '📤', action: () => console.log('export') }
       ];
 
-      kanban.innerHTML = \`
-        <div class="kanban-container">
-          \${phases.map(phase => {
-            const mods = systemData.modules.filter(m => phase.modules.includes(m.id));
-            const allSeqs = mods.flatMap(m => m.sequences.map(s => ({ ...s, moduleId: m.id, moduleName: m.name })));
-            return \`
-              <div class="kanban-column">
-                <div class="kanban-column-header">
-                  <span class="dot" style="background:\${phase.color}"></span>
-                  <h4>\${phase.name}</h4>
-                  <span class="count">\${allSeqs.length}</span>
-                </div>
-                <div class="kanban-column-body">
-                  \${allSeqs.map(seq => \`
-                    <div class="kanban-card" onclick="selectSequence('\${seq.moduleId}', '\${seq.id}')">
-                      <div class="kanban-card-id">\${seq.id}</div>
-                      <div class="kanban-card-name">\${seq.name}</div>
-                      <div class="kanban-card-meta">\${seq.trigger} | \${seq.messages} msgs</div>
-                    </div>
-                  \`).join('')}
-                </div>
-              </div>
-            \`;
-          }).join('')}
+      if (!q || 'new module'.includes(q)) items.push({ ...commands[0], type: 'command' });
+      if (!q || 'deploy'.includes(q)) items.push({ ...commands[1], type: 'command' });
+      if (!q || 'export'.includes(q)) items.push({ ...commands[2], type: 'command' });
+
+      // Group by type
+      const modules = items.filter(i => i.type === 'module');
+      const sequences = items.filter(i => i.type === 'sequence');
+      const cmds = items.filter(i => i.type === 'command');
+
+      let html = '';
+      if (modules.length) {
+        html += \`<div class="cmd-group"><div class="cmd-group-label">Modules</div>\${modules.map((it, i) => renderCmdItem(it, i)).join('')}</div>\`;
+      }
+      if (sequences.length) {
+        const offset = modules.length;
+        html += \`<div class="cmd-group"><div class="cmd-group-label">Sequences</div>\${sequences.map((it, i) => renderCmdItem(it, offset + i)).join('')}</div>\`;
+      }
+      if (cmds.length) {
+        const offset = modules.length + sequences.length;
+        html += \`<div class="cmd-group"><div class="cmd-group-label">Commands</div>\${cmds.map((it, i) => renderCmdItem(it, offset + i)).join('')}</div>\`;
+      }
+
+      results.innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text-3);">No results</div>';
+
+      // Store items for navigation
+      window._cmdItems = [...modules, ...sequences, ...cmds];
+    }
+
+    function renderCmdItem(item, index) {
+      const selected = index === state.cmdSelected ? 'selected' : '';
+      return \`
+        <div class="cmd-item \${selected}" data-idx="\${index}" onclick="executeCmdItem(\${index})">
+          <span class="icon" style="background:\${item.color || 'var(--bg-3)'}22;color:\${item.color || 'var(--text-1)'}">\${item.icon}</span>
+          <span class="label">\${item.label}</span>
+          <span class="meta">\${item.meta}</span>
+          \${item.shortcut ? \`<span class="shortcut">\${item.shortcut}</span>\` : ''}
         </div>
       \`;
     }
 
-    // ===================== VIEWS =====================
-
-    document.querySelectorAll('.view-tab').forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        currentView = tab.dataset.view;
-
-        if (currentView === 'kanban') {
-          document.getElementById('kanban-view').classList.add('visible');
-          document.getElementById('canvas').style.display = 'none';
-        } else {
-          document.getElementById('kanban-view').classList.remove('visible');
-          document.getElementById('canvas').style.display = 'block';
-        }
-      };
-    });
-
-    // ===================== AI CHAT =====================
-
-    function toggleAIChat() {
-      const chat = document.getElementById('ai-chat');
-      const toggle = document.getElementById('ai-chat-toggle');
-      chat.classList.toggle('visible');
-      toggle.classList.toggle('hidden', chat.classList.contains('visible'));
+    function executeCmdItem(index) {
+      const item = window._cmdItems?.[index];
+      if (item?.action) {
+        item.action();
+        closeCmdPalette({target: $('#cmd-overlay')});
+      }
     }
 
-    function sendAIMessage() {
-      const input = document.querySelector('#ai-chat-input input');
-      const message = input.value.trim();
-      if (!message) return;
+    // ===================== AI ASSISTANT =====================
+    function toggleAI() {
+      state.aiOpen = !state.aiOpen;
+      $('#ai-panel').classList.toggle('visible', state.aiOpen);
+      $('#ai-toggle').classList.toggle('hidden', state.aiOpen);
+      if (state.aiOpen) $('#ai-input').focus();
+    }
 
-      const messages = document.getElementById('ai-chat-messages');
+    function askAI(question) {
+      $('#ai-input').value = question;
+      sendAI();
+    }
 
-      // User message
-      messages.innerHTML += \`
-        <div class="ai-message user">
-          <div class="ai-message-content">\${message}</div>
-        </div>
-      \`;
+    function sendAI() {
+      const input = $('#ai-input');
+      const msg = input.value.trim();
+      if (!msg) return;
 
-      // Simulate AI response
+      const messages = $('#ai-messages');
+      messages.innerHTML += \`<div class="ai-msg user"><div class="ai-msg-bubble">\${msg}</div></div>\`;
+
       setTimeout(() => {
         let response = '';
-        let links = [];
+        const lc = msg.toLowerCase();
 
-        if (message.toLowerCase().includes('48') || message.toLowerCase().includes('window')) {
-          response = \`According to the <strong>48-Hour Window</strong> module:\\n\\n1. Workflow 48-04 fires at window_start + 48h\\n2. Condition: Stage != Claimed\\n3. Actions:\\n   - Opportunity -> Lost\\n   - Tag: window-expired added\\n   - Starts: R1 (Re-engagement)\\n\\nThe module has 95% health score with full documentation.\`;
-          links = ['&#128196; SOP: 48-Hour Window Management', '&#128279; Workflow 48-04'];
-        } else if (message.toLowerCase().includes('sms') || message.toLowerCase().includes('text')) {
-          response = \`Workflows that send SMS messages:\\n\\n- <strong>W1</strong>: Acceptance notification\\n- <strong>W2</strong>: 24hr reminder\\n- <strong>W3</strong>: 6hr warning\\n- <strong>W4</strong>: 1hr final call\\n- <strong>W5</strong>: 15min countdown\\n- <strong>C1</strong>: Claim confirmation\\n\\nTotal: 8 SMS messages across 6 sequences.\`;
-          links = ['&#128279; View all SMS templates'];
-        } else if (message.toLowerCase().includes('missing') || message.toLowerCase().includes('gap')) {
-          response = \`Documentation gaps detected:\\n\\n<strong>Missing SOPs:</strong>\\n- AP-03: Rejection Handler (0% documented)\\n- RV-02: Re-engagement 3d (0% documented)\\n- RV-03: Waitlist Offer (0% documented)\\n\\n<strong>Low Health Modules:</strong>\\n- Recovery: 72%\\n- Application Processing: 78%\\n\\nRecommendation: Prioritize documenting recovery workflows.\`;
-          links = ['&#128196; Generate SOP for AP-03', '&#128202; View Health Dashboard'];
+        if (lc.includes('48') || lc.includes('window') || lc.includes('miss')) {
+          response = \`According to the <b>48-Hour Window</b> module (95% health):<br><br>
+            When window expires without claim:<br>
+            1. Workflow 48-04 fires<br>
+            2. Contact moves to Lost stage<br>
+            3. Tag "window-expired" added<br>
+            4. Starts sequence R1 (Recovery)<br><br>
+            Re-engagement attempts at 3d, 7d, and 14d post-expiry.\`;
+        } else if (lc.includes('sms') || lc.includes('text')) {
+          response = \`Sequences that send SMS messages:<br><br>
+            <b>W1</b> - Window Started (1 SMS)<br>
+            <b>W2</b> - 24hr Reminder (1 SMS)<br>
+            <b>W3</b> - 6hr Warning (1 SMS)<br>
+            <b>W4</b> - 1hr Final (1 SMS)<br>
+            <b>W5</b> - 15min Countdown (1 SMS)<br>
+            <b>C1</b> - Claim Confirmed (1 SMS)<br><br>
+            Total: 6 SMS messages across 6 sequences.\`;
+        } else if (lc.includes('missing') || lc.includes('doc') || lc.includes('gap')) {
+          response = \`Documentation gaps detected:<br><br>
+            <b>Low health modules:</b><br>
+            • Recovery: 72% (missing SOPs)<br>
+            • Application Processing: 78%<br><br>
+            <b>Sequences without messages:</b><br>
+            • A2, A3 (Lead Capture)<br>
+            • R2, R3, R4 (Recovery)<br><br>
+            Priority: Add recovery re-engagement content.\`;
         } else {
-          response = \`I can answer questions about the Burton Method system based on actual module data, not general knowledge.\\n\\nTry asking about:\\n- Specific workflows or sequences\\n- What triggers certain actions\\n- Documentation gaps\\n- Module dependencies\`;
+          response = \`I can answer questions about the Burton Method system based on actual data.<br><br>
+            Try asking about:<br>
+            • Specific workflows or triggers<br>
+            • What happens at certain stages<br>
+            • Documentation gaps<br>
+            • Message sequences\`;
         }
 
-        messages.innerHTML += \`
-          <div class="ai-message assistant">
-            <div class="ai-message-content">\${response.replace(/\\n/g, '<br>')}</div>
-            \${links.length ? \`<div class="ai-links">\${links.map(l => \`<span class="ai-link">\${l}</span>\`).join('')}</div>\` : ''}
-          </div>
-        \`;
+        messages.innerHTML += \`<div class="ai-msg bot"><div class="ai-msg-bubble">\${response}</div></div>\`;
         messages.scrollTop = messages.scrollHeight;
-      }, 500);
+      }, 400);
 
       input.value = '';
     }
 
-    // Enter key to send
-    document.querySelector('#ai-chat-input input').addEventListener('keypress', e => {
-      if (e.key === 'Enter') sendAIMessage();
+    // ===================== KEYBOARD SHORTCUTS =====================
+    document.addEventListener('keydown', e => {
+      // Command palette
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        if (state.cmdOpen) closeCmdPalette({target: $('#cmd-overlay')});
+        else openCmdPalette();
+        return;
+      }
+
+      // Escape
+      if (e.key === 'Escape') {
+        if (state.cmdOpen) closeCmdPalette({target: $('#cmd-overlay')});
+        else if (state.aiOpen) toggleAI();
+        else closeDetail();
+        return;
+      }
+
+      // Command palette navigation
+      if (state.cmdOpen) {
+        const items = window._cmdItems || [];
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          state.cmdSelected = (state.cmdSelected + 1) % items.length;
+          $$('.cmd-item').forEach((el, i) => el.classList.toggle('selected', i === state.cmdSelected));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          state.cmdSelected = (state.cmdSelected - 1 + items.length) % items.length;
+          $$('.cmd-item').forEach((el, i) => el.classList.toggle('selected', i === state.cmdSelected));
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          executeCmdItem(state.cmdSelected);
+        }
+        return;
+      }
+
+      // AI input
+      if (state.aiOpen && document.activeElement === $('#ai-input')) {
+        if (e.key === 'Enter') sendAI();
+        return;
+      }
+
+      // Module navigation (j/k)
+      if (e.key === 'j' || e.key === 'k') {
+        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        e.preventDefault();
+        const rows = Array.from($$('.module-row'));
+        if (!rows.length) return;
+
+        let idx = rows.findIndex(r => r.classList.contains('focused'));
+        if (idx === -1) idx = 0;
+        else {
+          rows[idx].classList.remove('focused');
+          idx = e.key === 'j' ? (idx + 1) % rows.length : (idx - 1 + rows.length) % rows.length;
+        }
+        rows[idx].classList.add('focused');
+        rows[idx].scrollIntoView({ block: 'nearest' });
+
+        // Show keyboard hint
+        $('#keyboard-hint').classList.add('visible');
+        clearTimeout(window._hintTimeout);
+        window._hintTimeout = setTimeout(() => $('#keyboard-hint').classList.remove('visible'), 2000);
+      }
+
+      // Open focused module
+      if (e.key === 'o' || e.key === 'Enter') {
+        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        const focused = $('.module-row.focused');
+        if (focused) {
+          focused.click();
+        }
+      }
+    });
+
+    // Command palette input handler
+    $('#cmd-input').addEventListener('input', e => {
+      state.cmdSelected = 0;
+      renderCmdResults(e.target.value);
     });
 
     // ===================== INIT =====================
+    function goHome() {
+      closeDetail();
+      $$('.module-row').forEach(r => r.classList.remove('selected'));
+      $$('.child-item').forEach(c => c.classList.remove('selected'));
+      state.selectedModule = null;
+      state.selectedSequence = null;
+    }
 
-    renderModuleTree();
-    drawCanvas();
-    renderKanban();
+    function init() {
+      renderSidebar();
+      drawCanvas();
+
+      // Resize handler
+      window.addEventListener('resize', () => {
+        drawCanvas();
+      });
+    }
+
+    init();
   <\/script>
 </body>
 </html>`;
